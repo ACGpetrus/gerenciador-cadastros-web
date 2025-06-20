@@ -1,0 +1,35 @@
+<body>
+    <h1>Meus Cadastros</h1>
+    <a href="/adicionar" style="margin-bottom: 20px; display: block;">+ Adicionar Novo Cadastro</a>
+
+    {% if cadastros %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome Completo</th>
+                    <th>Email</th>
+                    <th>Companhia</th>
+                    <th>Deadline</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cadastro in cadastros %}
+                    <tr>
+                        <td>{{ cadastro.nome }}</td>
+                        <td>{{ cadastro.email }}</td>
+                        <td>{{ cadastro.companhia }}</td>
+                        <td>{{ cadastro.deadline }}</td>
+                        <td class="actions">
+                            <a href="{{ url_for('editar_cadastro', id=cadastro.id) }}">Editar</a>
+                            <a href="{{ url_for('deletar_cadastro', id=cadastro.id) }}" class="btn-delete" onclick="return confirm('Tem certeza que deseja deletar este cadastro?');">Deletar</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Nenhum cadastro encontrado.</p>
+    {% endif %}
+</body>
+</html>

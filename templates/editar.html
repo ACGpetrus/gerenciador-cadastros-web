@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Cadastro</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; }
+        .form-container { max-width: 500px; margin: auto; padding: 20px; border: 1px solid #ccc; border-radius: 5px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; }
+        .form-group input { width: 100%; padding: 8px; box-sizing: border-box; }
+        .btn { padding: 10px 15px; background-color: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        .btn:hover { background-color: #218838; }
+        .link-voltar { display: block; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <h2>Editando: {{ cadastro.nome }}</h2>
+
+        <form action="{{ url_for('editar_cadastro', id=cadastro.id) }}" method="post">
+            
+            <div class="form-group">
+                <label for="nome">Nome Completo:</label>
+                <input type="text" id="nome" name="nome" value="{{ cadastro.nome }}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" value="{{ cadastro.get('email', '') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="companhia">Companhia:</label>
+                <input type="text" id="companhia" name="companhia" value="{{ cadastro.get('companhia', '') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="localizador">Localizador:</label>
+                <input type="text" id="localizador" name="localizador" value="{{ cadastro.get('localizador', '') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="data_da_reserva">Data da Reserva:</label>
+                <input type="text" id="data_da_reserva" name="data_da_reserva" value="{{ cadastro.get('data_da_reserva', '') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="deadline">Deadline:</label>
+                <input type="text" id="deadline" name="deadline" value="{{ cadastro.get('deadline', '') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="criador">Criador:</label>
+                <input type="text" id="criador" name="criador" value="{{ cadastro.get('criador', '') }}" required>
+            </div>
+            
+            <button type="submit" class="btn">Salvar Alterações</button>
+        </form>
+
+        <a href="/" class="link-voltar">&larr; Voltar para a lista</a>
+    </div>
+
+</body>
+</html>

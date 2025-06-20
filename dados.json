@@ -1,0 +1,35 @@
+[
+    {
+        "nome": "MARIA CLARA",
+        "email": "MARIA@GASR.CO.UK",
+        "companhia": "LATAM ",
+        "localizador": "AFAFRF",
+        "data_da_reserva": "18/06/2025",
+        "deadline": "25/06/2025",
+        "criador": "ALVARO"
+    },
+    {
+        "nome": "ANA PAULA SILVA",
+        "email": "ANAPAULA@HOTMAIL.COM",
+        "companhia": "TAP",
+        "localizador": "ABCDEF",
+        "data_emissao": "17/06/2025",
+        "deadline": "19/06/2025"
+    },
+    {
+        "nome": "CESAR G",
+        "email": "CESARG@HOTMAIL.COM",
+        "companhia": "LATAM",
+        "localizador": "SADFAF",
+        "data_emissao": "17/06/2025",
+        "deadline": "21/06/2025"
+    },
+    {
+        "nome": "EDSON JOSE ",
+        "email": "BLABLA@HOTMAIL.COM",
+        "companhia": "LATAM",
+        "localizador": "ASDFFA",
+        "data_emissao": "15/06/2025",
+        "deadline": "14/07/2025"
+    }
+]
