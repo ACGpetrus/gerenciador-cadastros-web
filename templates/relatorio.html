@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Relatório de Deadlines{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Relatório: Deadlines para os Próximos {{ dias }} Dias</h1>
+
+    {% if cadastros_encontrados %}
+        <p class="lead">Foram encontrados {{ cadastros_encontrados|length }} cadastros com deadline neste período.</p>
+        
+        {% for cadastro, dias_restantes in cadastros_encontrados %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <strong>Nome:</strong> {{ cadastro.nome or 'N/A' }}
+                </div>
+                <div class="card-body">
+                    <p class="card-text"><strong>Companhia:</strong> {{ cadastro.companhia or 'N/A' }}</p>
+                    <p class="card-text"><strong>Localizador:</strong> {{ cadastro.localizador or 'N/A' }}</p>
+                    <p class="card-text"><strong>Deadline:</strong> {{ cadastro.deadline or 'N/A' }} (Faltam {{ dias_restantes }} dias)</p>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-warning">Nenhum cadastro com deadline nos próximos {{ dias }} dias.</div>
+    {% endif %}
+
+    <a href="{{ url_for('pagina_inicial') }}" class="btn btn-secondary mt-3">&larr; Voltar para a Lista Principal</a>
+{% endblock %}
