@@ -1,0 +1,148 @@
+<!-- Guarde este código como templates/ponto.html -->
+
+<!-- Mude "base.html" se o seu ficheiro de layout principal tiver outro nome -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Registro de Ponto</h1>
+
+    <!-- Secção para mostrar mensagens de sucesso ou erro -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Formulário para Criar ou Editar um Registo -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4 id="form-title">Adicionar Novo Registo</h4>
+        </div>
+        <div class="card-body">
+            <form id="ponto-form" method="POST" action="{{ url_for('registro_ponto') }}">
+                <!-- Input escondido para guardar o ID do registo a ser editado -->
+                <input type="hidden" id="registro_id" name="registro_id">
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="data" class="form-label">Data</label>
+                        <input type="date" class="form-control" id="data" name="data" value="{{ hoje.strftime('%Y-%m-%d') }}" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="hora_entrada" class="form-label">Hora de Entrada</label>
+                        <input type="time" class="form-control" id="hora_entrada" name="hora_entrada">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="hora_saida" class="form-label">Hora de Saída</label>
+                        <input type="time" class="form-control" id="hora_saida" name="hora_saida">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="observacao" class="form-label">Observações (opcional)</label>
+                    <textarea class="form-control" id="observacao" name="observacao" rows="2"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Salvar Registo</button>
+                <button type="button" class="btn btn-secondary" id="clear-form-btn" style="display: none;">Cancelar Edição</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela para Listar Registos Existentes -->
+    <div class="card">
+        <div class="card-header">
+            <h4>Meus Registos</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Entrada</th>
+                            <th>Saída</th>
+                            <th>Total de Horas</th>
+                            <th>Observações</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- O loop usa a variável 'registros' que vem do app.py -->
+                        {% for registro in registros %}
+                        <tr>
+                            <!-- E cada item dentro do loop é chamado de 'registro' -->
+                            <td>{{ registro.data.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ registro.hora_entrada.strftime('%H:%M') if registro.hora_entrada else '---' }}</td>
+                            <td>{{ registro.hora_saida.strftime('%H:%M') if registro.hora_saida else '---' }}</td>
+                            <td>{{ registro.total_horas }}</td>
+                            <td>{{ registro.observacao }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary edit-btn"
+                                        data-id="{{ registro.id }}"
+                                        data-data="{{ registro.data.strftime('%Y-%m-%d') }}"
+                                        data-entrada="{{ registro.hora_entrada.strftime('%H:%M') if registro.hora_entrada else '' }}"
+                                        data-saida="{{ registro.hora_saida.strftime('%H:%M') if registro.hora_saida else '' }}"
+                                        data-obs="{{ registro.observacao or '' }}">
+                                    Editar
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center">Ainda não há registos.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script para a funcionalidade de edição -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('ponto-form');
+    const formTitle = document.getElementById('form-title');
+    const registroIdInput = document.getElementById('registro_id');
+    const dataInput = document.getElementById('data');
+    const entradaInput = document.getElementById('hora_entrada');
+    const saidaInput = document.getElementById('hora_saida');
+    const obsInput = document.getElementById('observacao');
+    const clearBtn = document.getElementById('clear-form-btn');
+
+    document.querySelectorAll('.edit-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            const id = this.dataset.id;
+            const data = this.dataset.data;
+            const entrada = this.dataset.entrada;
+            const saida = this.dataset.saida;
+            const obs = this.dataset.obs;
+
+            formTitle.innerText = 'Editar Registo';
+            registroIdInput.value = id;
+            dataInput.value = data;
+            entradaInput.value = entrada;
+            saidaInput.value = saida;
+            obsInput.value = obs;
+
+            clearBtn.style.display = 'inline-block';
+            form.scrollIntoView({ behavior: 'smooth' });
+        });
+    });
+
+    clearBtn.addEventListener('click', function() {
+        formTitle.innerText = 'Adicionar Novo Registo';
+        form.reset();
+        registroIdInput.value = '';
+        dataInput.value = '{{ hoje.strftime("%Y-%m-%d") }}';
+        this.style.display = 'none';
+    });
+});
+</script>
+{% endblock %}
