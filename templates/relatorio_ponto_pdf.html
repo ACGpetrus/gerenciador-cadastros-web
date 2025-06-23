@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Ponto</title>
+    <style>
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: #333;
+        }
+        .container {
+            width: 90%;
+            margin: auto;
+        }
+        h1, h2 {
+            text-align: center;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .total-geral {
+            margin-top: 30px;
+            float: right;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Relatório de Ponto Mensal</h1>
+        <h2>{{ usuario.username }} - {{ "%02d"|format(mes) }}/{{ ano }}</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Entrada</th>
+                    <th>Início Almoço</th>
+                    <th>Fim Almoço</th>
+                    <th>Saída</th>
+                    <th>Total Horas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for registro in registros %}
+                <tr>
+                    <td>{{ registro.data.strftime('%d/%m/%Y') }}</td>
+                    <td>{{ registro.hora_entrada.strftime('%H:%M') if registro.hora_entrada else '---' }}</td>
+                    <td>{{ registro.hora_inicio_almoco.strftime('%H:%M') if registro.hora_inicio_almoco else '---' }}</td>
+                    <td>{{ registro.hora_fim_almoco.strftime('%H:%M') if registro.hora_fim_almoco else '---' }}</td>
+                    <td>{{ registro.hora_saida.strftime('%H:%M') if registro.hora_saida else '---' }}</td>
+                    <td>{{ registro.total_horas }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6">Nenhum registro encontrado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="total-geral">
+            <span>Total de Horas no Mês: {{ total_geral }}</span>
+        </div>
+    </div>
+</body>
+</html>

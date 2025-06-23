@@ -1,11 +1,13 @@
 # app.py com todas as funcionalidades web
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 import datetime
 from functools import wraps
+from sqlalchemy import extract
+from weasyprint import HTML
 
 # --- Configuração ---
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -43,6 +45,8 @@ class RegistroPonto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data = db.Column(db.Date, nullable=False)
     hora_entrada = db.Column(db.Time, nullable=True)
+    hora_inicio_almoco = db.Column(db.Time, nullable=True)
+    hora_fim_almoco = db.Column(db.Time, nullable=True)
     hora_saida = db.Column(db.Time, nullable=True)
     observacao = db.Column(db.String(200), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -50,19 +54,34 @@ class RegistroPonto(db.Model):
 
     @property
     def total_horas(self):
-        if self.hora_entrada and self.hora_saida:
-            try:
-                entrada_dt = datetime.datetime.combine(datetime.date.min, self.hora_entrada)
-                saida_dt = datetime.datetime.combine(datetime.date.min, self.hora_saida)
-                if saida_dt > entrada_dt:
-                    delta = saida_dt - entrada_dt
-                    total_seconds = int(delta.total_seconds())
-                    hours = total_seconds // 3600
-                    minutes = (total_seconds % 3600) // 60
-                    return f"{hours}h {minutes:02d}m"
-            except:
-                return "Erro"
-        return "N/A"
+        if not self.hora_entrada or not self.hora_saida:
+            return "N/A"
+
+        try:
+            hoje = datetime.date.min
+            entrada_dt = datetime.datetime.combine(hoje, self.hora_entrada)
+            saida_dt = datetime.datetime.combine(hoje, self.hora_saida)
+            duracao_total_segundos = (saida_dt - entrada_dt).total_seconds()
+
+            duracao_almoco_segundos = 0
+            if self.hora_inicio_almoco and self.hora_fim_almoco:
+                inicio_almoco_dt = datetime.datetime.combine(hoje, self.hora_inicio_almoco)
+                fim_almoco_dt = datetime.datetime.combine(hoje, self.hora_fim_almoco)
+                if fim_almoco_dt > inicio_almoco_dt:
+                    duracao_almoco_segundos = (fim_almoco_dt - inicio_almoco_dt).total_seconds()
+
+            total_trabalhado_segundos = duracao_total_segundos - duracao_almoco_segundos
+
+            if total_trabalhado_segundos < 0:
+                total_trabalhado_segundos = 0
+
+            hours = int(total_trabalhado_segundos // 3600)
+            minutes = int((total_trabalhado_segundos % 3600) // 60)
+            return f"{hours}h {minutes:02d}m"
+
+        except Exception:
+            return "Erro"
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -86,6 +105,8 @@ def registro_ponto():
     if request.method == 'POST':
         data_str = request.form.get('data')
         hora_entrada_str = request.form.get('hora_entrada')
+        hora_inicio_almoco_str = request.form.get('hora_inicio_almoco')
+        hora_fim_almoco_str = request.form.get('hora_fim_almoco')
         hora_saida_str = request.form.get('hora_saida')
         observacao = request.form.get('observacao')
         registro_id = request.form.get('registro_id')
@@ -93,6 +114,8 @@ def registro_ponto():
         try:
             data = datetime.datetime.strptime(data_str, '%Y-%m-%d').date()
             hora_entrada = datetime.datetime.strptime(hora_entrada_str, '%H:%M').time() if hora_entrada_str else None
+            hora_inicio_almoco = datetime.datetime.strptime(hora_inicio_almoco_str, '%H:%M').time() if hora_inicio_almoco_str else None
+            hora_fim_almoco = datetime.datetime.strptime(hora_fim_almoco_str, '%H:%M').time() if hora_fim_almoco_str else None
             hora_saida = datetime.datetime.strptime(hora_saida_str, '%H:%M').time() if hora_saida_str else None
 
             if registro_id:
@@ -103,15 +126,26 @@ def registro_ponto():
                 
                 registro_a_editar.data = data
                 registro_a_editar.hora_entrada = hora_entrada
+                registro_a_editar.hora_inicio_almoco = hora_inicio_almoco
+                registro_a_editar.hora_fim_almoco = hora_fim_almoco
                 registro_a_editar.hora_saida = hora_saida
                 registro_a_editar.observacao = observacao
                 flash('Registo de ponto atualizado com sucesso!', 'success')
+            
             else:
                 ja_existe = RegistroPonto.query.filter_by(user_id=current_user.id, data=data).first()
                 if ja_existe:
                     flash(f'Já existe um registo para o dia {data.strftime("%d/%m/%Y")}. Edite o registo existente na lista.', 'warning')
                 else:
-                    novo_registro = RegistroPonto(data=data, hora_entrada=hora_entrada, hora_saida=hora_saida, observacao=observacao, user_id=current_user.id)
+                    novo_registro = RegistroPonto(
+                        data=data, 
+                        hora_entrada=hora_entrada, 
+                        hora_inicio_almoco=hora_inicio_almoco,
+                        hora_fim_almoco=hora_fim_almoco,
+                        hora_saida=hora_saida, 
+                        observacao=observacao, 
+                        user_id=current_user.id
+                    )
                     db.session.add(novo_registro)
                     flash('Novo registo de ponto adicionado com sucesso!', 'success')
             
@@ -125,6 +159,75 @@ def registro_ponto():
     registros_do_utilizador = RegistroPonto.query.filter_by(user_id=current_user.id).order_by(RegistroPonto.data.desc()).all()
     
     return render_template('ponto.html', registros=registros_do_utilizador, hoje=hoje)
+
+
+# --- NOVA ROTA PARA GERAR RELATÓRIO PDF ---
+@app.route('/relatorio/ponto')
+@login_required
+def relatorio_ponto():
+    try:
+        mes = int(request.args.get('mes'))
+        ano = int(request.args.get('ano'))
+    except (TypeError, ValueError):
+        flash('Mês e ano inválidos.', 'danger')
+        return redirect(url_for('registro_ponto'))
+
+    # Busca todos os registros do usuário para o mês e ano selecionados
+    registros_do_mes = RegistroPonto.query.filter(
+        RegistroPonto.user_id == current_user.id,
+        extract('year', RegistroPonto.data) == ano,
+        extract('month', RegistroPonto.data) == mes
+    ).order_by(RegistroPonto.data.asc()).all()
+
+    if not registros_do_mes:
+        flash(f'Nenhum registro encontrado para {mes:02d}/{ano}.', 'warning')
+        return redirect(url_for('registro_ponto'))
+
+    # --- Lógica para somar todas as horas ---
+    total_segundos_mes = 0
+    for registro in registros_do_mes:
+        if not registro.hora_entrada or not registro.hora_saida:
+            continue
+
+        hoje = datetime.date.min
+        entrada_dt = datetime.datetime.combine(hoje, registro.hora_entrada)
+        saida_dt = datetime.datetime.combine(hoje, registro.hora_saida)
+        
+        duracao_total_segundos = (saida_dt - entrada_dt).total_seconds()
+        
+        duracao_almoco_segundos = 0
+        if registro.hora_inicio_almoco and registro.hora_fim_almoco:
+            inicio_almoco_dt = datetime.datetime.combine(hoje, registro.hora_inicio_almoco)
+            fim_almoco_dt = datetime.datetime.combine(hoje, registro.hora_fim_almoco)
+            if fim_almoco_dt > inicio_almoco_dt:
+                duracao_almoco_segundos = (fim_almoco_dt - inicio_almoco_dt).total_seconds()
+
+        total_trabalhado_segundos = duracao_total_segundos - duracao_almoco_segundos
+        if total_trabalhado_segundos > 0:
+            total_segundos_mes += total_trabalhado_segundos
+    
+    # Formata o total de segundos para um formato legível "Xh Ym"
+    h = int(total_segundos_mes // 3600)
+    m = int((total_segundos_mes % 3600) // 60)
+    total_geral_formatado = f"{h}h {m:02d}m"
+
+    # Renderiza o template HTML que servirá de base para o PDF
+    html_renderizado = render_template(
+        'relatorio_ponto_pdf.html', 
+        registros=registros_do_mes,
+        mes=mes,
+        ano=ano,
+        usuario=current_user,
+        total_geral=total_geral_formatado
+    )
+
+    # Gera o PDF a partir do HTML renderizado
+    pdf = HTML(string=html_renderizado).write_pdf()
+
+    # Cria uma resposta Flask para enviar o PDF ao navegador
+    return Response(pdf,
+                    mimetype='application/pdf',
+                    headers={'Content-Disposition': 'inline; filename=relatorio_ponto.pdf'})
 
 
 # --- ROTAS DA APLICAÇÃO PRINCIPAL ---
@@ -146,7 +249,6 @@ def pagina_inicial():
     lista_de_cadastros = query_base.order_by(Cadastro.id.desc()).all()
     return render_template('index.html', cadastros=lista_de_cadastros, termo_ativo=termo_busca, criterio_ativo=criterio_busca)
 
-# <<< A FUNÇÃO QUE FALTAVA FOI REINSERIDA AQUI >>>
 @app.route('/relatorio')
 @login_required
 def relatorio_deadlines():
@@ -257,8 +359,6 @@ def logout():
 
 
 if __name__ == '__main__':
-    # Bloco para criar a base de dados se não existir.
-    # Para uma aplicação em produção, isto seria gerido por migrations.
     with app.app_context():
         db.create_all()
     app.run(debug=True)

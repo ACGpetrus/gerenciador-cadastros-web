@@ -30,25 +30,79 @@
                 <input type="hidden" id="registro_id" name="registro_id">
                 
                 <div class="row">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-6 mb-3">
                         <label for="data" class="form-label">Data</label>
                         <input type="date" class="form-control" id="data" name="data" value="{{ hoje.strftime('%Y-%m-%d') }}" required>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="hora_entrada" class="form-label">Hora de Entrada</label>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Total de Horas do Dia:</label>
+                        <h4 id="contador-horas" class="fw-bold">00:00</h4>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="hora_entrada" class="form-label">Entrada</label>
                         <input type="time" class="form-control" id="hora_entrada" name="hora_entrada">
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="hora_saida" class="form-label">Hora de Saída</label>
+                    <div class="col-md-3 mb-3">
+                        <label for="hora_inicio_almoco" class="form-label">Início Almoço</label>
+                        <input type="time" class="form-control" id="hora_inicio_almoco" name="hora_inicio_almoco">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="hora_fim_almoco" class="form-label">Fim Almoço</label>
+                        <input type="time" class="form-control" id="hora_fim_almoco" name="hora_fim_almoco">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="hora_saida" class="form-label">Saída</label>
                         <input type="time" class="form-control" id="hora_saida" name="hora_saida">
                     </div>
                 </div>
+
                 <div class="mb-3">
                     <label for="observacao" class="form-label">Observações (opcional)</label>
                     <textarea class="form-control" id="observacao" name="observacao" rows="2"></textarea>
                 </div>
+
                 <button type="submit" class="btn btn-primary">Salvar Registo</button>
                 <button type="button" class="btn btn-secondary" id="clear-form-btn" style="display: none;">Cancelar Edição</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- NOVO: Secção para Gerar Relatório Mensal -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Gerar Relatório Mensal</h4>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('relatorio_ponto') }}" target="_blank">
+                <div class="row align-items-end">
+                    <div class="col-md-5 mb-3">
+                        <label for="mes" class="form-label">Mês</label>
+                        <select id="mes" name="mes" class="form-select" required>
+                            <option value="1">Janeiro</option>
+                            <option value="2">Fevereiro</option>
+                            <option value="3">Março</option>
+                            <option value="4">Abril</option>
+                            <option value="5">Maio</option>
+                            <option value="6">Junho</option>
+                            <option value="7">Julho</option>
+                            <option value="8">Agosto</option>
+                            <option value="9">Setembro</option>
+                            <option value="10">Outubro</option>
+                            <option value="11">Novembro</option>
+                            <option value="12">Dezembro</option>
+                        </select>
+                    </div>
+                    <div class="col-md-5 mb-3">
+                        <label for="ano" class="form-label">Ano</label>
+                        <input type="number" id="ano" name="ano" class="form-control" value="{{ hoje.year }}" required>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <button type="submit" class="btn btn-success w-100">Gerar PDF</button>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
@@ -65,6 +119,8 @@
                         <tr>
                             <th>Data</th>
                             <th>Entrada</th>
+                            <th>Início Almoço</th>
+                            <th>Fim Almoço</th>
                             <th>Saída</th>
                             <th>Total de Horas</th>
                             <th>Observações</th>
@@ -75,9 +131,10 @@
                         <!-- O loop usa a variável 'registros' que vem do app.py -->
                         {% for registro in registros %}
                         <tr>
-                            <!-- E cada item dentro do loop é chamado de 'registro' -->
                             <td>{{ registro.data.strftime('%d/%m/%Y') }}</td>
                             <td>{{ registro.hora_entrada.strftime('%H:%M') if registro.hora_entrada else '---' }}</td>
+                            <td>{{ registro.hora_inicio_almoco.strftime('%H:%M') if registro.hora_inicio_almoco else '---' }}</td>
+                            <td>{{ registro.hora_fim_almoco.strftime('%H:%M') if registro.hora_fim_almoco else '---' }}</td>
                             <td>{{ registro.hora_saida.strftime('%H:%M') if registro.hora_saida else '---' }}</td>
                             <td>{{ registro.total_horas }}</td>
                             <td>{{ registro.observacao }}</td>
@@ -86,6 +143,8 @@
                                         data-id="{{ registro.id }}"
                                         data-data="{{ registro.data.strftime('%Y-%m-%d') }}"
                                         data-entrada="{{ registro.hora_entrada.strftime('%H:%M') if registro.hora_entrada else '' }}"
+                                        data-inicio-almoco="{{ registro.hora_inicio_almoco.strftime('%H:%M') if registro.hora_inicio_almoco else '' }}"
+                                        data-fim-almoco="{{ registro.hora_fim_almoco.strftime('%H:%M') if registro.hora_fim_almoco else '' }}"
                                         data-saida="{{ registro.hora_saida.strftime('%H:%M') if registro.hora_saida else '' }}"
                                         data-obs="{{ registro.observacao or '' }}">
                                     Editar
@@ -94,7 +153,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="6" class="text-center">Ainda não há registos.</td>
+                            <td colspan="8" class="text-center">Ainda não há registos.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -104,44 +163,100 @@
     </div>
 </div>
 
-<!-- Script para a funcionalidade de edição -->
+<!-- Script para a funcionalidade de edição e cálculo de horas -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // --- Seletores dos elementos do formulário ---
     const form = document.getElementById('ponto-form');
     const formTitle = document.getElementById('form-title');
     const registroIdInput = document.getElementById('registro_id');
-    const dataInput = document.getElementById('data');
-    const entradaInput = document.getElementById('hora_entrada');
-    const saidaInput = document.getElementById('hora_saida');
-    const obsInput = document.getElementById('observacao');
     const clearBtn = document.getElementById('clear-form-btn');
 
+    // Campos de input
+    const dataInput = document.getElementById('data');
+    const entradaInput = document.getElementById('hora_entrada');
+    const inicioAlmocoInput = document.getElementById('hora_inicio_almoco');
+    const fimAlmocoInput = document.getElementById('hora_fim_almoco');
+    const saidaInput = document.getElementById('hora_saida');
+    const obsInput = document.getElementById('observacao');
+
+    // Campo para exibir o total
+    const contadorHoras = document.getElementById('contador-horas');
+
+    // --- Função para calcular o total de horas ---
+    function calcularTotalHoras() {
+        const entrada = entradaInput.value;
+        const saida = saidaInput.value;
+        const inicioAlmoco = inicioAlmocoInput.value;
+        const fimAlmoco = fimAlmocoInput.value;
+
+        if (!entrada || !saida) {
+            contadorHoras.textContent = '00:00';
+            return;
+        }
+
+        // Converte "HH:MM" para minutos
+        const entradaMin = parseInt(entrada.split(':')[0]) * 60 + parseInt(entrada.split(':')[1]);
+        const saidaMin = parseInt(saida.split(':')[0]) * 60 + parseInt(saida.split(':')[1]);
+
+        let jornadaMin = saidaMin - entradaMin;
+
+        // Calcula o tempo de almoço apenas se ambos os campos estiverem preenchidos
+        if (inicioAlmoco && fimAlmoco) {
+            const inicioAlmocoMin = parseInt(inicioAlmoco.split(':')[0]) * 60 + parseInt(inicioAlmoco.split(':')[1]);
+            const fimAlmocoMin = parseInt(fimAlmoco.split(':')[0]) * 60 + parseInt(fimAlmoco.split(':')[1]);
+            const almocoMin = fimAlmocoMin - inicioAlmocoMin;
+
+            if (almocoMin > 0) {
+                jornadaMin -= almocoMin;
+            }
+        }
+        
+        if (jornadaMin < 0) jornadaMin = 0; // Evita totais negativos
+
+        // Converte o total de minutos de volta para "HH:MM"
+        const horas = Math.floor(jornadaMin / 60);
+        const minutos = jornadaMin % 60;
+
+        contadorHoras.textContent = `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
+    }
+
+    // --- Event Listeners ---
+
+    // Recalcula as horas sempre que um campo de tempo é alterado
+    [entradaInput, inicioAlmocoInput, fimAlmocoInput, saidaInput].forEach(input => {
+        input.addEventListener('input', calcularTotalHoras);
+    });
+
+    // Lógica para o botão "Editar" (atualizada)
     document.querySelectorAll('.edit-btn').forEach(button => {
         button.addEventListener('click', function () {
-            const id = this.dataset.id;
-            const data = this.dataset.data;
-            const entrada = this.dataset.entrada;
-            const saida = this.dataset.saida;
-            const obs = this.dataset.obs;
-
+            // Preenche o formulário com os dados do botão
             formTitle.innerText = 'Editar Registo';
-            registroIdInput.value = id;
-            dataInput.value = data;
-            entradaInput.value = entrada;
-            saidaInput.value = saida;
-            obsInput.value = obs;
-
+            registroIdInput.value = this.dataset.id;
+            dataInput.value = this.dataset.data;
+            entradaInput.value = this.dataset.entrada;
+            inicioAlmocoInput.value = this.dataset.inicioAlmoco;
+            fimAlmocoInput.value = this.dataset.fimAlmoco;
+            saidaInput.value = this.dataset.saida;
+            obsInput.value = this.dataset.obs;
+            
             clearBtn.style.display = 'inline-block';
             form.scrollIntoView({ behavior: 'smooth' });
+            
+            // Recalcula as horas ao preencher o formulário para edição
+            calcularTotalHoras();
         });
     });
 
+    // Lógica para o botão "Cancelar Edição"
     clearBtn.addEventListener('click', function() {
         formTitle.innerText = 'Adicionar Novo Registo';
         form.reset();
         registroIdInput.value = '';
-        dataInput.value = '{{ hoje.strftime("%Y-%m-%d") }}';
+        dataInput.value = '{{ hoje.strftime("%Y-%m-%d") }}'; // Valor padrão para data
         this.style.display = 'none';
+        calcularTotalHoras(); // Reseta o contador
     });
 });
 </script>
