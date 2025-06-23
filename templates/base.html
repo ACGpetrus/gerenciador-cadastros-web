@@ -6,6 +6,21 @@
     <title>{% block title %}Gerenciador de Cadastros{% endblock %}</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <!-- NOVO: Estilos personalizados para melhorar a legibilidade da navegação -->
+    <style>
+        .navbar-nav .nav-link {
+            font-size: 1.05rem; /* Aumenta um pouco o tamanho da fonte */
+            font-weight: 500;   /* Deixa a fonte um pouco mais "cheia" */
+            color: rgba(255, 255, 255, 0.85) !important; /* Deixa o branco um pouco menos transparente */
+        }
+        .navbar-nav .nav-link:hover, .navbar-nav .nav-link.active {
+            color: #fff !important; /* Branco puro ao passar o rato ou na página ativa */
+        }
+        .navbar-brand {
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body class="bg-light">
 
@@ -22,14 +37,17 @@
                 <!-- Links principais à esquerda -->
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('pagina_inicial') }}">Home Cadastros</a>
+                        <!-- MUDANÇA: "Home Cadastros" para "Cadastros" -->
+                        <a class="nav-link" href="{{ url_for('pagina_inicial') }}">Cadastros</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('registro_ponto') }}">Registro de Ponto</a>
                     </li>
-                    <!-- NOVO LINK PARA A AGENDA DE CONTATOS -->
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('contatos') }}">Agenda de Contatos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('ajuda') }}">Central de Ajuda</a>
                     </li>
                 </ul>
                 
@@ -72,8 +90,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 
     <script>
-        // Este script não é mais necessário aqui, pois foi movido para as páginas específicas.
-        // Pode ser removido se não for usado para mais nada.
         function toggleColumn(columnClass) {
             const checkbox = document.querySelector(`input[name=${columnClass}]`);
             const elements = document.querySelectorAll(`.${columnClass}`);

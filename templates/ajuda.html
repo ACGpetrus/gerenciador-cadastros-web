@@ -1,0 +1,183 @@
+<!-- Guarde este código como templates/ajuda.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10 mx-auto">
+            <h1 class="mb-4 text-center">Central de Ajuda</h1>
+
+            <!-- Secção para mostrar mensagens de sucesso ou erro -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Formulários de Gestão (SÓ PARA ADMINS) -->
+            {% if current_user.is_admin %}
+            <div class="row">
+                <!-- Coluna para gerir as Áreas -->
+                <div class="col-md-5 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h4>Gerir Áreas</h4>
+                        </div>
+                        <div class="card-body">
+                            <!-- Formulário para adicionar nova Área -->
+                            <form method="POST" action="{{ url_for('adicionar_categoria_ajuda') }}" class="mb-4">
+                                <label for="nome_categoria" class="form-label">Nome da Nova Área</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="nome_categoria" name="nome_categoria" required>
+                                    <button type="submit" class="btn btn-success">Criar Área</button>
+                                </div>
+                            </form>
+                            <hr>
+                            <!-- Lista de Áreas existentes com botão para apagar -->
+                            <h6 class="mb-3">Áreas existentes:</h6>
+                            <ul class="list-group">
+                                {% for cat in categorias %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    {{ cat.nome }}
+                                    <form action="{{ url_for('deletar_categoria_ajuda', id=cat.id) }}" method="POST" onsubmit="return confirm('Atenção: Apagar esta área irá apagar TODAS as perguntas dentro dela. Tem a certeza?');">
+                                        <button type="submit" class="btn btn-sm btn-danger">&times;</button>
+                                    </form>
+                                </li>
+                                {% else %}
+                                <li class="list-group-item text-muted">Ainda não há áreas.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Coluna para Adicionar/Editar Artigos -->
+                <div class="col-md-7 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h4 id="form-title">Adicionar Novo Artigo</h4>
+                        </div>
+                        <div class="card-body">
+                            <form id="ajuda-form" method="POST" action="{{ url_for('ajuda') }}">
+                                <input type="hidden" id="artigo_id" name="artigo_id">
+                                
+                                <!-- NOVO: Dropdown para escolher a categoria -->
+                                <div class="mb-3">
+                                    <label for="categoria_id" class="form-label">Área <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="categoria_id" name="categoria_id" required>
+                                        <option value="" disabled selected>Selecione uma área...</option>
+                                        {% for cat in categorias %}
+                                        <option value="{{ cat.id }}">{{ cat.nome }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="pergunta" class="form-label">Pergunta <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="pergunta" name="pergunta" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="resposta" class="form-label">Resposta <span class="text-danger">*</span></label>
+                                    <textarea class="form-control" id="resposta" name="resposta" rows="4" required></textarea>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">Salvar Artigo</button>
+                                <button type="button" class="btn btn-secondary" id="clear-form-btn" style="display: none;">Cancelar Edição</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Lista de Perguntas e Respostas AGRUPADAS POR CATEGORIA -->
+            <hr class="my-5">
+            {% for categoria in categorias %}
+                {% if categoria.artigos %}
+                    <h3 class="mb-3">{{ categoria.nome }}</h3>
+                    <div class="accordion mb-4" id="accordion-{{ categoria.id }}">
+                        {% for artigo in categoria.artigos %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading-{{ artigo.id }}">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ artigo.id }}" aria-expanded="false" aria-controls="collapse-{{ artigo.id }}">
+                                    {{ artigo.pergunta }}
+                                </button>
+                            </h2>
+                            <div id="collapse-{{ artigo.id }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ artigo.id }}" data-bs-parent="#accordion-{{ categoria.id }}">
+                                <div class="accordion-body">
+                                    <p>{{ artigo.resposta | safe }}</p>
+
+                                    <!-- Botões de Ação (SÓ PARA ADMINS) -->
+                                    {% if current_user.is_admin %}
+                                    <hr>
+                                    <div class="text-end">
+                                        <button class="btn btn-sm btn-outline-primary edit-btn"
+                                                data-id="{{ artigo.id }}"
+                                                data-pergunta="{{ artigo.pergunta }}"
+                                                data-resposta="{{ artigo.resposta }}"
+                                                data-categoria-id="{{ artigo.categoria_id }}">
+                                            Editar
+                                        </button>
+                                        <form action="{{ url_for('deletar_artigo_ajuda', id=artigo.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Tem a certeza que deseja apagar este artigo?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                Apagar
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% else %}
+                <p class="text-center text-muted fs-5 mt-5">A Central de Ajuda está vazia. Comece por criar uma Área e adicione o seu primeiro artigo.</p>
+            {% endfor %}
+
+        </div>
+    </div>
+</div>
+
+<!-- Script para a funcionalidade de edição (SÓ PARA ADMINS) -->
+{% if current_user.is_admin %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('ajuda-form');
+    const formTitle = document.getElementById('form-title');
+    const artigoIdInput = document.getElementById('artigo_id');
+    const perguntaInput = document.getElementById('pergunta');
+    const respostaInput = document.getElementById('resposta');
+    const categoriaSelect = document.getElementById('categoria_id');
+    const clearBtn = document.getElementById('clear-form-btn');
+
+    document.querySelectorAll('.edit-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            formTitle.innerText = 'Editar Artigo de Ajuda';
+            artigoIdInput.value = this.dataset.id;
+            perguntaInput.value = this.dataset.pergunta;
+            respostaInput.value = this.dataset.resposta;
+            // NOVO: Seleciona a categoria correta no dropdown
+            categoriaSelect.value = this.dataset.categoriaId;
+
+            clearBtn.style.display = 'inline-block';
+            form.scrollIntoView({ behavior: 'smooth' });
+        });
+    });
+
+    clearBtn.addEventListener('click', function() {
+        formTitle.innerText = 'Adicionar Novo Artigo';
+        form.reset();
+        artigoIdInput.value = '';
+        this.style.display = 'none';
+    });
+});
+</script>
+{% endif %}
+{% endblock %}
