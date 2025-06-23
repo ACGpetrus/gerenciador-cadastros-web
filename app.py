@@ -54,33 +54,37 @@ class RegistroPonto(db.Model):
 
     @property
     def total_horas(self):
+        # ... (código existente, sem alterações)
         if not self.hora_entrada or not self.hora_saida:
             return "N/A"
-
         try:
             hoje = datetime.date.min
             entrada_dt = datetime.datetime.combine(hoje, self.hora_entrada)
             saida_dt = datetime.datetime.combine(hoje, self.hora_saida)
             duracao_total_segundos = (saida_dt - entrada_dt).total_seconds()
-
             duracao_almoco_segundos = 0
             if self.hora_inicio_almoco and self.hora_fim_almoco:
                 inicio_almoco_dt = datetime.datetime.combine(hoje, self.hora_inicio_almoco)
                 fim_almoco_dt = datetime.datetime.combine(hoje, self.hora_fim_almoco)
                 if fim_almoco_dt > inicio_almoco_dt:
                     duracao_almoco_segundos = (fim_almoco_dt - inicio_almoco_dt).total_seconds()
-
             total_trabalhado_segundos = duracao_total_segundos - duracao_almoco_segundos
-
             if total_trabalhado_segundos < 0:
                 total_trabalhado_segundos = 0
-
             hours = int(total_trabalhado_segundos // 3600)
             minutes = int((total_trabalhado_segundos % 3600) // 60)
             return f"{hours}h {minutes:02d}m"
-
         except Exception:
             return "Erro"
+
+class Contato(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    telefone = db.Column(db.String(20), nullable=True)
+    email = db.Column(db.String(100), nullable=True)
+    observacoes = db.Column(db.String(300), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('contatos', lazy=True))
 
 
 @login_manager.user_loader
@@ -97,11 +101,11 @@ def admin_required(f):
     return decorated_function
 
 
-# --- ROTAS DE REGISTRO DE PONTO ---
-
+# --- ROTAS DE REGISTRO DE PONTO (Sem alterações) ---
 @app.route('/ponto', methods=['GET', 'POST'])
 @login_required
 def registro_ponto():
+    # ... (código existente)
     if request.method == 'POST':
         data_str = request.form.get('data')
         hora_entrada_str = request.form.get('hora_entrada')
@@ -110,20 +114,17 @@ def registro_ponto():
         hora_saida_str = request.form.get('hora_saida')
         observacao = request.form.get('observacao')
         registro_id = request.form.get('registro_id')
-
         try:
             data = datetime.datetime.strptime(data_str, '%Y-%m-%d').date()
             hora_entrada = datetime.datetime.strptime(hora_entrada_str, '%H:%M').time() if hora_entrada_str else None
             hora_inicio_almoco = datetime.datetime.strptime(hora_inicio_almoco_str, '%H:%M').time() if hora_inicio_almoco_str else None
             hora_fim_almoco = datetime.datetime.strptime(hora_fim_almoco_str, '%H:%M').time() if hora_fim_almoco_str else None
             hora_saida = datetime.datetime.strptime(hora_saida_str, '%H:%M').time() if hora_saida_str else None
-
             if registro_id:
                 registro_a_editar = RegistroPonto.query.get_or_404(registro_id)
                 if registro_a_editar.user_id != current_user.id:
                     flash('Não tem permissão para editar este registo.', 'danger')
                     return redirect(url_for('registro_ponto'))
-                
                 registro_a_editar.data = data
                 registro_a_editar.hora_entrada = hora_entrada
                 registro_a_editar.hora_inicio_almoco = hora_inicio_almoco
@@ -131,137 +132,172 @@ def registro_ponto():
                 registro_a_editar.hora_saida = hora_saida
                 registro_a_editar.observacao = observacao
                 flash('Registo de ponto atualizado com sucesso!', 'success')
-            
             else:
                 ja_existe = RegistroPonto.query.filter_by(user_id=current_user.id, data=data).first()
                 if ja_existe:
                     flash(f'Já existe um registo para o dia {data.strftime("%d/%m/%Y")}. Edite o registo existente na lista.', 'warning')
                 else:
-                    novo_registro = RegistroPonto(
-                        data=data, 
-                        hora_entrada=hora_entrada, 
-                        hora_inicio_almoco=hora_inicio_almoco,
-                        hora_fim_almoco=hora_fim_almoco,
-                        hora_saida=hora_saida, 
-                        observacao=observacao, 
-                        user_id=current_user.id
-                    )
+                    novo_registro = RegistroPonto(data=data, hora_entrada=hora_entrada, hora_inicio_almoco=hora_inicio_almoco, hora_fim_almoco=hora_fim_almoco, hora_saida=hora_saida, observacao=observacao, user_id=current_user.id)
                     db.session.add(novo_registro)
                     flash('Novo registo de ponto adicionado com sucesso!', 'success')
-            
             db.session.commit()
         except (ValueError, TypeError) as e:
             flash(f'Erro no formato dos dados. Verifique a data e as horas. Detalhe: {e}', 'danger')
-
         return redirect(url_for('registro_ponto'))
-
     hoje = datetime.date.today()
     registros_do_utilizador = RegistroPonto.query.filter_by(user_id=current_user.id).order_by(RegistroPonto.data.desc()).all()
-    
     return render_template('ponto.html', registros=registros_do_utilizador, hoje=hoje)
 
-
-# --- NOVA ROTA PARA GERAR RELATÓRIO PDF ---
+# --- ROTAS DE RELATÓRIO PDF (Sem alterações) ---
 @app.route('/relatorio/ponto')
 @login_required
 def relatorio_ponto():
+    # ... (código existente)
     try:
         mes = int(request.args.get('mes'))
         ano = int(request.args.get('ano'))
     except (TypeError, ValueError):
         flash('Mês e ano inválidos.', 'danger')
         return redirect(url_for('registro_ponto'))
-
-    # Busca todos os registros do usuário para o mês e ano selecionados
-    registros_do_mes = RegistroPonto.query.filter(
-        RegistroPonto.user_id == current_user.id,
-        extract('year', RegistroPonto.data) == ano,
-        extract('month', RegistroPonto.data) == mes
-    ).order_by(RegistroPonto.data.asc()).all()
-
+    registros_do_mes = RegistroPonto.query.filter(RegistroPonto.user_id == current_user.id, extract('year', RegistroPonto.data) == ano, extract('month', RegistroPonto.data) == mes).order_by(RegistroPonto.data.asc()).all()
     if not registros_do_mes:
         flash(f'Nenhum registro encontrado para {mes:02d}/{ano}.', 'warning')
         return redirect(url_for('registro_ponto'))
-
-    # --- Lógica para somar todas as horas ---
     total_segundos_mes = 0
     for registro in registros_do_mes:
         if not registro.hora_entrada or not registro.hora_saida:
             continue
-
         hoje = datetime.date.min
         entrada_dt = datetime.datetime.combine(hoje, registro.hora_entrada)
         saida_dt = datetime.datetime.combine(hoje, registro.hora_saida)
-        
         duracao_total_segundos = (saida_dt - entrada_dt).total_seconds()
-        
         duracao_almoco_segundos = 0
         if registro.hora_inicio_almoco and registro.hora_fim_almoco:
             inicio_almoco_dt = datetime.datetime.combine(hoje, registro.hora_inicio_almoco)
             fim_almoco_dt = datetime.datetime.combine(hoje, registro.hora_fim_almoco)
             if fim_almoco_dt > inicio_almoco_dt:
                 duracao_almoco_segundos = (fim_almoco_dt - inicio_almoco_dt).total_seconds()
-
         total_trabalhado_segundos = duracao_total_segundos - duracao_almoco_segundos
         if total_trabalhado_segundos > 0:
             total_segundos_mes += total_trabalhado_segundos
-    
-    # Formata o total de segundos para um formato legível "Xh Ym"
     h = int(total_segundos_mes // 3600)
     m = int((total_segundos_mes % 3600) // 60)
     total_geral_formatado = f"{h}h {m:02d}m"
-
-    # Renderiza o template HTML que servirá de base para o PDF
-    html_renderizado = render_template(
-        'relatorio_ponto_pdf.html', 
-        registros=registros_do_mes,
-        mes=mes,
-        ano=ano,
-        usuario=current_user,
-        total_geral=total_geral_formatado
-    )
-
-    # Gera o PDF a partir do HTML renderizado
+    html_renderizado = render_template('relatorio_ponto_pdf.html', registros=registros_do_mes, mes=mes, ano=ano, usuario=current_user, total_geral=total_geral_formatado)
     pdf = HTML(string=html_renderizado).write_pdf()
-
-    # Cria uma resposta Flask para enviar o PDF ao navegador
-    return Response(pdf,
-                    mimetype='application/pdf',
-                    headers={'Content-Disposition': 'inline; filename=relatorio_ponto.pdf'})
+    return Response(pdf, mimetype='application/pdf', headers={'Content-Disposition': 'inline; filename=relatorio_ponto.pdf'})
 
 
-# --- ROTAS DA APLICAÇÃO PRINCIPAL ---
+# --- ROTA ATUALIZADA: AGENDA DE CONTATOS COM BUSCA ---
+@app.route('/contatos', methods=['GET', 'POST'])
+@login_required
+def contatos():
+    if request.method == 'POST':
+        contato_id = request.form.get('contato_id')
+        nome = request.form.get('nome')
+        telefone = request.form.get('telefone')
+        email = request.form.get('email')
+        observacoes = request.form.get('observacoes')
 
+        if not nome:
+            flash('O campo "Nome" é obrigatório.', 'danger')
+            return redirect(url_for('contatos'))
+
+        if contato_id:
+            contato_a_editar = Contato.query.get_or_404(contato_id)
+            if contato_a_editar.user_id != current_user.id:
+                flash('Você não tem permissão para editar este contato.', 'danger')
+                return redirect(url_for('contatos'))
+            
+            contato_a_editar.nome = nome
+            contato_a_editar.telefone = telefone
+            contato_a_editar.email = email
+            contato_a_editar.observacoes = observacoes
+            flash('Contato atualizado com sucesso!', 'success')
+        
+        else:
+            novo_contato = Contato(
+                nome=nome,
+                telefone=telefone,
+                email=email,
+                observacoes=observacoes,
+                user_id=current_user.id
+            )
+            db.session.add(novo_contato)
+            flash('Novo contato adicionado com sucesso!', 'success')
+        
+        db.session.commit()
+        return redirect(url_for('contatos'))
+
+    # --- LÓGICA DE BUSCA (GET) ---
+    termo_busca = request.args.get('termo', '')
+    criterio_busca = request.args.get('criterio', 'nome') # 'nome' é o padrão
+
+    query_base = Contato.query
+    if termo_busca:
+        mapa_criterios = {
+            "nome": Contato.nome,
+            "telefone": Contato.telefone,
+            "email": Contato.email
+        }
+        campo_busca = mapa_criterios.get(criterio_busca)
+        if campo_busca:
+            # ilike faz uma busca 'case-insensitive' que contém o termo
+            query_base = query_base.filter(campo_busca.ilike(f'%{termo_busca}%'))
+    
+    # Executa a busca e ordena por nome
+    contatos_filtrados = query_base.order_by(Contato.nome.asc()).all()
+    
+    # Envia os resultados e os termos de busca para o template
+    return render_template('contatos.html', 
+                           contatos=contatos_filtrados, 
+                           termo_ativo=termo_busca, 
+                           criterio_ativo=criterio_busca)
+
+
+@app.route('/contato/deletar/<int:id>', methods=['POST'])
+@login_required
+def deletar_contato(id):
+    contato_a_deletar = Contato.query.get_or_404(id)
+    if contato_a_deletar.user_id != current_user.id:
+        flash('Você não tem permissão para apagar este contato.', 'danger')
+    else:
+        db.session.delete(contato_a_deletar)
+        db.session.commit()
+        flash('Contato apagado com sucesso.', 'warning')
+    
+    return redirect(url_for('contatos'))
+
+
+# --- ROTAS DA APLICAÇÃO PRINCIPAL E AUTENTICAÇÃO (Sem alterações) ---
 @app.route('/')
 @login_required
 def pagina_inicial():
+    # ... (código existente)
     termo_busca = request.args.get('termo', '')
     criterio_busca = request.args.get('criterio', 'nome')
     query_base = Cadastro.query
     if termo_busca:
-        mapa_criterios = {
-            "nome": Cadastro.nome, "companhia": Cadastro.companhia, "email": Cadastro.email,
-            "localizador": Cadastro.localizador, "criador": Cadastro.criador
-        }
+        mapa_criterios = { "nome": Cadastro.nome, "companhia": Cadastro.companhia, "email": Cadastro.email, "localizador": Cadastro.localizador, "criador": Cadastro.criador }
         campo_busca = mapa_criterios.get(criterio_busca)
         if campo_busca:
             query_base = query_base.filter(campo_busca.ilike(f'%{termo_busca}%'))
     lista_de_cadastros = query_base.order_by(Cadastro.id.desc()).all()
     return render_template('index.html', cadastros=lista_de_cadastros, termo_ativo=termo_busca, criterio_ativo=criterio_busca)
 
+# ... (resto das rotas sem alterações)
 @app.route('/relatorio')
 @login_required
 def relatorio_deadlines():
+    # ... (código existente)
     dias_str = request.args.get('dias', '7')
     try:
         dias = int(dias_str)
     except ValueError:
         dias = 7
-
     hoje = datetime.date.today()
     proximos_cadastros = []
     cadastros = Cadastro.query.all()
-    
     for cadastro in cadastros:
         try:
             deadline_date = datetime.datetime.strptime(cadastro.deadline, "%d/%m/%Y").date()
@@ -270,16 +306,13 @@ def relatorio_deadlines():
                 proximos_cadastros.append((cadastro, diferenca_dias))
         except (ValueError, TypeError):
             continue
-    
     proximos_cadastros.sort(key=lambda item: item[1])
-
     return render_template('relatorio.html', cadastros_encontrados=proximos_cadastros, dias=dias)
 
-
-# --- ROTAS CRUD (Adicionar, Editar, Deletar) ---
 @app.route('/adicionar', methods=['GET', 'POST'])
 @login_required
 def adicionar_cadastro():
+    # ... (código existente)
     if request.method == 'POST':
         novo_cadastro = Cadastro(nome=request.form['nome'], email=request.form['email'], companhia=request.form['companhia'], localizador=request.form['localizador'], data_da_reserva=request.form['data_da_reserva'], deadline=request.form['deadline'], criador=current_user.username)
         db.session.add(novo_cadastro)
@@ -291,6 +324,7 @@ def adicionar_cadastro():
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
 @login_required
 def editar_cadastro(id):
+    # ... (código existente)
     cadastro_para_editar = Cadastro.query.get_or_404(id)
     if request.method == 'POST':
         cadastro_para_editar.nome = request.form['nome']
@@ -307,17 +341,18 @@ def editar_cadastro(id):
 @app.route('/deletar/<int:id>')
 @login_required
 def deletar_cadastro(id):
+    # ... (código existente)
     cadastro_a_deletar = Cadastro.query.get_or_404(id)
     db.session.delete(cadastro_a_deletar)
     db.session.commit()
     flash('Cadastro deletado com sucesso!', 'warning')
     return redirect(url_for('pagina_inicial'))
 
-# --- ROTAS DE ADMINISTRAÇÃO ---
 @app.route('/admin/users', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def manage_users():
+    # ... (código existente)
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -336,9 +371,9 @@ def manage_users():
     all_users = User.query.order_by(User.id).all()
     return render_template('admin_users.html', users=all_users)
 
-# --- ROTAS DE AUTENTICAÇÃO ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # ... (código existente)
     if current_user.is_authenticated:
         return redirect(url_for('pagina_inicial'))
     if request.method == 'POST':
@@ -353,10 +388,10 @@ def login():
 @app.route('/logout')
 @login_required
 def logout():
+    # ... (código existente)
     logout_user()
     flash('Você foi desconectado com sucesso.', 'info')
     return redirect(url_for('login'))
-
 
 if __name__ == '__main__':
     with app.app_context():

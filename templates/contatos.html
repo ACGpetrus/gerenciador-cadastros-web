@@ -1,0 +1,173 @@
+<!-- Guarde este código como templates/contatos.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Agenda de Contatos da Empresa</h1>
+
+    <!-- Secção para mostrar mensagens de sucesso ou erro -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Formulário para Criar ou Editar um Contato -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4 id="form-title">Adicionar Novo Contato</h4>
+        </div>
+        <div class="card-body">
+            <form id="contato-form" method="POST" action="{{ url_for('contatos') }}">
+                <!-- Input escondido para guardar o ID do contato a ser editado -->
+                <input type="hidden" id="contato_id" name="contato_id">
+                
+                <div class="mb-3">
+                    <label for="nome" class="form-label">Nome Completo <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="nome" name="nome" required>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="telefone" class="form-label">Telefone</label>
+                        <input type="tel" class="form-control" id="telefone" name="telefone">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="observacoes" class="form-label">Observações</label>
+                    <textarea class="form-control" id="observacoes" name="observacoes" rows="3"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Salvar Contato</button>
+                <button type="button" class="btn btn-secondary" id="clear-form-btn" style="display: none;">Cancelar Edição</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela para Listar Contatos Existentes -->
+    <div class="card">
+        <div class="card-header">
+            <h4>Contatos Registrados</h4>
+        </div>
+        <div class="card-body">
+            <!-- Formulário de Busca -->
+            <div class="card bg-light mb-4 p-3">
+                <form method="GET" action="{{ url_for('contatos') }}">
+                    <div class="row align-items-end">
+                        <div class="col-md-6">
+                            <label for="termo" class="form-label">Termo de Busca</label>
+                            <input type="search" class="form-control" id="termo" name="termo" value="{{ termo_ativo or '' }}" placeholder="Buscar por...">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="criterio" class="form-label">Buscar em</label>
+                            <select id="criterio" name="criterio" class="form-select">
+                                <option value="nome" {% if criterio_ativo == 'nome' %}selected{% endif %}>Nome</option>
+                                <option value="telefone" {% if criterio_ativo == 'telefone' %}selected{% endif %}>Telefone</option>
+                                <option value="email" {% if criterio_ativo == 'email' %}selected{% endif %}>Email</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-info w-100">Buscar</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Telefone</th>
+                            <th>Email</th>
+                            <th>Observações</th>
+                            <th>Criado por</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for contato in contatos %}
+                        <tr>
+                            <td>{{ contato.nome }}</td>
+                            <td>{{ contato.telefone or '---' }}</td>
+                            <td>{{ contato.email or '---' }}</td>
+                            <td>{{ contato.observacoes or '---' }}</td>
+                            <td>{{ contato.user.username }}</td>
+                            <td>
+                                {% if contato.user_id == current_user.id %}
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-sm btn-outline-primary edit-btn"
+                                                data-id="{{ contato.id }}"
+                                                data-nome="{{ contato.nome }}"
+                                                data-telefone="{{ contato.telefone or '' }}"
+                                                data-email="{{ contato.email or '' }}"
+                                                data-observacoes="{{ contato.observacoes or '' }}">
+                                            Editar
+                                        </button>
+                                        
+                                        <form action="{{ url_for('deletar_contato', id=contato.id) }}" method="POST" onsubmit="return confirm('Tem a certeza que deseja apagar este contato?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                Apagar
+                                            </button>
+                                        </form>
+                                    </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center">Nenhum contato encontrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script para a funcionalidade de edição -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('contato-form');
+    const formTitle = document.getElementById('form-title');
+    const contatoIdInput = document.getElementById('contato_id');
+    const nomeInput = document.getElementById('nome');
+    const telefoneInput = document.getElementById('telefone');
+    const emailInput = document.getElementById('email');
+    const obsInput = document.getElementById('observacoes');
+    const clearBtn = document.getElementById('clear-form-btn');
+
+    document.querySelectorAll('.edit-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            formTitle.innerText = 'Editar Contato';
+            contatoIdInput.value = this.dataset.id;
+            nomeInput.value = this.dataset.nome;
+            telefoneInput.value = this.dataset.telefone;
+            emailInput.value = this.dataset.email;
+            obsInput.value = this.dataset.observacoes;
+
+            clearBtn.style.display = 'inline-block';
+            form.scrollIntoView({ behavior: 'smooth' });
+        });
+    });
+
+    clearBtn.addEventListener('click', function() {
+        formTitle.innerText = 'Adicionar Novo Contato';
+        form.reset();
+        contatoIdInput.value = '';
+        this.style.display = 'none';
+    });
+});
+</script>
+{% endblock %}
