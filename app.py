@@ -32,7 +32,6 @@ class User(db.Model, UserMixin):
     is_admin = db.Column(db.Boolean, nullable=False, default=False)
 
 class Cadastro(db.Model):
-    # ... (código existente, sem alterações)
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), nullable=True)
@@ -41,9 +40,9 @@ class Cadastro(db.Model):
     data_da_reserva = db.Column(db.String(20), nullable=True)
     deadline = db.Column(db.String(20), nullable=True)
     criador = db.Column(db.String(100), nullable=False)
+    pagador = db.Column(db.String(100), nullable=True)
 
 class RegistroPonto(db.Model):
-    # ... (código existente, sem alterações)
     id = db.Column(db.Integer, primary_key=True)
     data = db.Column(db.Date, nullable=False)
     hora_entrada = db.Column(db.Time, nullable=True)
@@ -74,7 +73,6 @@ class RegistroPonto(db.Model):
         except Exception: return "Erro"
 
 class Contato(db.Model):
-    # ... (código existente, sem alterações)
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
     telefone = db.Column(db.String(20), nullable=True)
@@ -83,23 +81,28 @@ class Contato(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('contatos', lazy=True))
 
-# --- MODELOS ATUALIZADOS: AJUDA ---
-
-# NOVO MODELO para as "Áreas" ou Categorias
 class CategoriaAjuda(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), unique=True, nullable=False)
-    # A relação permite-nos aceder a `categoria.artigos` para ver todas as perguntas.
-    # A opção 'cascade' apaga todos os artigos de uma categoria se a categoria for apagada.
     artigos = db.relationship('ArtigoAjuda', backref='categoria', lazy=True, cascade="all, delete-orphan")
 
-# MODELO ATUALIZADO para os artigos, agora com uma ligação à sua categoria
 class ArtigoAjuda(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     pergunta = db.Column(db.String(200), nullable=False)
     resposta = db.Column(db.Text, nullable=False)
-    # A chave estrangeira que liga o artigo à sua categoria
     categoria_id = db.Column(db.Integer, db.ForeignKey('categoria_ajuda.id'), nullable=False)
+
+# --- MODELO PENDENCIA ATUALIZADO ---
+class Pendencia(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome_responsavel = db.Column(db.String(100), nullable=False)
+    data_limite = db.Column(db.Date, nullable=True)
+    titulo = db.Column(db.String(150), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    data_criacao = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    resolvido = db.Column(db.Boolean, nullable=False, default=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('pendencias', lazy=True))
 
 
 @login_manager.user_loader
@@ -115,8 +118,84 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- ROTAS DE PONTO E CONTATOS (Sem alterações) ---
-# ... (Todo o código das outras funcionalidades permanece igual)
+# --- ROTAS DE PENDÊNCIAS ATUALIZADAS ---
+@app.route('/pendencias', methods=['GET', 'POST'])
+@login_required
+def pendencias():
+    if request.method == 'POST':
+        pendencia_id = request.form.get('pendencia_id')
+        nome_responsavel = request.form.get('nome_responsavel')
+        data_limite_str = request.form.get('data_limite')
+        titulo = request.form.get('titulo')
+        descricao = request.form.get('descricao')
+
+        if not titulo or not nome_responsavel:
+            flash('Os campos "Nome do Responsável" e "Título" são obrigatórios.', 'danger')
+            return redirect(url_for('pendencias'))
+        
+        data_limite = None
+        if data_limite_str:
+            try:
+                data_limite = datetime.datetime.strptime(data_limite_str, '%Y-%m-%d').date()
+            except ValueError:
+                flash('Formato de data inválido. Use AAAA-MM-DD.', 'danger')
+                return redirect(url_for('pendencias'))
+
+        if pendencia_id: # Editar pendência
+            pendencia_a_editar = Pendencia.query.get_or_404(pendencia_id)
+            if pendencia_a_editar.user_id != current_user.id:
+                flash('Você não tem permissão para editar esta pendência.', 'danger')
+                return redirect(url_for('pendencias'))
+            
+            pendencia_a_editar.nome_responsavel = nome_responsavel
+            pendencia_a_editar.data_limite = data_limite
+            pendencia_a_editar.titulo = titulo
+            pendencia_a_editar.descricao = descricao
+            flash('Pendência atualizada com sucesso!', 'success')
+        else: # Adicionar nova pendência
+            nova_pendencia = Pendencia(
+                nome_responsavel=nome_responsavel,
+                data_limite=data_limite,
+                titulo=titulo, 
+                descricao=descricao, 
+                user_id=current_user.id
+            )
+            db.session.add(nova_pendencia)
+            flash('Nova pendência adicionada com sucesso!', 'success')
+        
+        db.session.commit()
+        return redirect(url_for('pendencias'))
+
+    # GET: Mostra as pendências não resolvidas
+    lista_pendencias = Pendencia.query.filter_by(user_id=current_user.id, resolvido=False).order_by(Pendencia.data_criacao.asc()).all()
+    return render_template('pendencias.html', pendencias=lista_pendencias)
+
+
+@app.route('/pendencia/resolver/<int:id>', methods=['POST'])
+@login_required
+def resolver_pendencia(id):
+    pendencia_a_resolver = Pendencia.query.get_or_404(id)
+    if pendencia_a_resolver.user_id != current_user.id:
+        flash('Você não tem permissão para alterar esta pendência.', 'danger')
+    else:
+        pendencia_a_resolver.resolvido = True
+        db.session.commit()
+        flash('Pendência marcada como resolvida!', 'success')
+    return redirect(url_for('pendencias'))
+
+@app.route('/pendencia/deletar/<int:id>', methods=['POST'])
+@login_required
+def deletar_pendencia(id):
+    pendencia_a_deletar = Pendencia.query.get_or_404(id)
+    if pendencia_a_deletar.user_id != current_user.id:
+        flash('Você não tem permissão para apagar esta pendência.', 'danger')
+    else:
+        db.session.delete(pendencia_a_deletar)
+        db.session.commit()
+        flash('Pendência apagada com sucesso.', 'warning')
+    return redirect(url_for('pendencias'))
+
+# --- OUTRAS ROTAS (SEM ALTERAÇÕES) ---
 @app.route('/ponto', methods=['GET', 'POST'])
 @login_required
 def registro_ponto():
@@ -137,7 +216,7 @@ def registro_ponto():
             if registro_id:
                 registro_a_editar = RegistroPonto.query.get_or_404(registro_id)
                 if registro_a_editar.user_id != current_user.id:
-                    flash('Não tem permissão para editar este registo.', 'danger')
+                    flash('Não tem permissão para editar este registro.', 'danger')
                     return redirect(url_for('registro_ponto'))
                 registro_a_editar.data = data
                 registro_a_editar.hora_entrada = hora_entrada
@@ -145,15 +224,15 @@ def registro_ponto():
                 registro_a_editar.hora_fim_almoco = hora_fim_almoco
                 registro_a_editar.hora_saida = hora_saida
                 registro_a_editar.observacao = observacao
-                flash('Registo de ponto atualizado com sucesso!', 'success')
+                flash('Registro de ponto atualizado com sucesso!', 'success')
             else:
                 ja_existe = RegistroPonto.query.filter_by(user_id=current_user.id, data=data).first()
                 if ja_existe:
-                    flash(f'Já existe um registo para o dia {data.strftime("%d/%m/%Y")}. Edite o registo existente na lista.', 'warning')
+                    flash(f'Já existe um registro para o dia {data.strftime("%d/%m/%Y")}. Edite o registro existente na lista.', 'warning')
                 else:
                     novo_registro = RegistroPonto(data=data, hora_entrada=hora_entrada, hora_inicio_almoco=hora_inicio_almoco, hora_fim_almoco=hora_fim_almoco, hora_saida=hora_saida, observacao=observacao, user_id=current_user.id)
                     db.session.add(novo_registro)
-                    flash('Novo registo de ponto adicionado com sucesso!', 'success')
+                    flash('Novo registro de ponto adicionado com sucesso!', 'success')
             db.session.commit()
         except (ValueError, TypeError) as e:
             flash(f'Erro no formato dos dados. Verifique a data e as horas. Detalhe: {e}', 'danger')
@@ -226,7 +305,7 @@ def contatos():
         return redirect(url_for('contatos'))
     termo_busca = request.args.get('termo', '')
     criterio_busca = request.args.get('criterio', 'nome')
-    query_base = Contato.query
+    query_base = Contato.query.filter_by(user_id=current_user.id)
     if termo_busca:
         mapa_criterios = {"nome": Contato.nome, "telefone": Contato.telefone, "email": Contato.email}
         campo_busca = mapa_criterios.get(criterio_busca)
@@ -246,12 +325,9 @@ def deletar_contato(id):
         flash('Contato apagado com sucesso.', 'warning')
     return redirect(url_for('contatos'))
 
-# --- ROTAS ATUALIZADAS: CENTRAL DE AJUDA ---
-
 @app.route('/ajuda', methods=['GET', 'POST'])
 @login_required
 def ajuda():
-    # A lógica POST é para administradores adicionarem/editarem artigos
     if request.method == 'POST':
         if not current_user.is_admin:
             flash('Você não tem permissão para realizar esta ação.', 'danger')
@@ -280,12 +356,10 @@ def ajuda():
         db.session.commit()
         return redirect(url_for('ajuda'))
 
-    # A lógica GET busca todas as categorias para as passar para a página
     categorias = CategoriaAjuda.query.order_by(CategoriaAjuda.nome.asc()).all()
     return render_template('ajuda.html', categorias=categorias)
 
 
-# NOVAS ROTAS para um admin gerir as categorias
 @app.route('/ajuda/categoria/adicionar', methods=['POST'])
 @login_required
 @admin_required
@@ -326,8 +400,6 @@ def deletar_artigo_ajuda(id):
     flash('Artigo de ajuda apagado com sucesso.', 'warning')
     return redirect(url_for('ajuda'))
 
-# --- ROTAS PRINCIPAIS, DE AUTENTICAÇÃO, ETC (Sem alterações) ---
-# ... (Todo o resto do código permanece igual)
 @app.route('/')
 @login_required
 def pagina_inicial():
@@ -335,7 +407,14 @@ def pagina_inicial():
     criterio_busca = request.args.get('criterio', 'nome')
     query_base = Cadastro.query
     if termo_busca:
-        mapa_criterios = { "nome": Cadastro.nome, "companhia": Cadastro.companhia, "email": Cadastro.email, "localizador": Cadastro.localizador, "criador": Cadastro.criador }
+        mapa_criterios = {
+            "nome": Cadastro.nome,
+            "companhia": Cadastro.companhia,
+            "email": Cadastro.email,
+            "localizador": Cadastro.localizador,
+            "criador": Cadastro.criador,
+            "pagador": Cadastro.pagador
+        }
         campo_busca = mapa_criterios.get(criterio_busca)
         if campo_busca: query_base = query_base.filter(campo_busca.ilike(f'%{termo_busca}%'))
     lista_de_cadastros = query_base.order_by(Cadastro.id.desc()).all()
@@ -363,7 +442,16 @@ def relatorio_deadlines():
 @login_required
 def adicionar_cadastro():
     if request.method == 'POST':
-        novo_cadastro = Cadastro(nome=request.form['nome'], email=request.form['email'], companhia=request.form['companhia'], localizador=request.form['localizador'], data_da_reserva=request.form['data_da_reserva'], deadline=request.form['deadline'], criador=current_user.username)
+        novo_cadastro = Cadastro(
+            nome=request.form.get('nome'),
+            email=request.form.get('email'),
+            companhia=request.form.get('companhia'),
+            localizador=request.form.get('localizador'),
+            data_da_reserva=request.form.get('data_da_reserva'),
+            deadline=request.form.get('deadline'),
+            pagador=request.form.get('pagador'),
+            criador=current_user.username
+        )
         db.session.add(novo_cadastro)
         db.session.commit()
         flash('Cadastro adicionado com sucesso!', 'success')
@@ -375,12 +463,13 @@ def adicionar_cadastro():
 def editar_cadastro(id):
     cadastro_para_editar = Cadastro.query.get_or_404(id)
     if request.method == 'POST':
-        cadastro_para_editar.nome = request.form['nome']
-        cadastro_para_editar.email = request.form['email']
-        cadastro_para_editar.companhia = request.form['companhia']
-        cadastro_para_editar.localizador = request.form['localizador']
-        cadastro_para_editar.data_da_reserva = request.form['data_da_reserva']
-        cadastro_para_editar.deadline = request.form['deadline']
+        cadastro_para_editar.nome = request.form.get('nome')
+        cadastro_para_editar.email = request.form.get('email')
+        cadastro_para_editar.companhia = request.form.get('companhia')
+        cadastro_para_editar.localizador = request.form.get('localizador')
+        cadastro_para_editar.data_da_reserva = request.form.get('data_da_reserva')
+        cadastro_para_editar.deadline = request.form.get('deadline')
+        cadastro_para_editar.pagador = request.form.get('pagador')
         db.session.commit()
         flash('Cadastro atualizado com sucesso!', 'success')
         return redirect(url_for('pagina_inicial'))

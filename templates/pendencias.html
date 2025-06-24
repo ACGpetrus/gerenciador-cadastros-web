@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Gestão de Pendências{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Gestão de Pendências</h2>
+    
+    <!-- Formulário para Adicionar/Editar Pendências -->
+    <div class="card mb-4">
+        <div class="card-header" id="form-card-header">
+            Adicionar Nova Pendência
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('pendencias') }}" method="POST" id="pendencia-form">
+                <!-- Campo oculto para o ID da pendência ao editar -->
+                <input type="hidden" name="pendencia_id" id="pendencia_id">
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="nome_responsavel" class="form-label">Nome do Responsável*</label>
+                        <input type="text" class="form-control" id="nome_responsavel" name="nome_responsavel" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="data_limite" class="form-label">Data</label>
+                        <input type="date" class="form-control" id="data_limite" name="data_limite">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="titulo" class="form-label">Título da Pendência*</label>
+                    <input type="text" class="form-control" id="titulo" name="titulo" required>
+                </div>
+                <div class="mb-3">
+                    <label for="descricao" class="form-label">Descrição</label>
+                    <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" id="submit-button">Adicionar</button>
+                <button type="button" class="btn btn-secondary d-none" id="cancel-edit-button" onclick="cancelarEdicao()">Cancelar Edição</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de Pendências Atuais -->
+    <h3 class="mb-3">Pendências Ativas</h3>
+    <div class="list-group">
+        {% if pendencias %}
+            {% for pendencia in pendencias %}
+            <div class="list-group-item list-group-item-action flex-column align-items-start">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">{{ pendencia.titulo }}</h5>
+                    <small>Data: {{ pendencia.data_limite.strftime('%d/%m/%Y') if pendencia.data_limite else 'N/A' }}</small>
+                </div>
+                <p class="mb-1"><strong>Responsável:</strong> {{ pendencia.nome_responsavel }}</p>
+                <p class="mb-1">{{ pendencia.descricao|default('Sem descrição.', true) }}</p>
+                
+                <div class="mt-2">
+                    <!-- Botão de Editar -->
+                    <button class="btn btn-outline-secondary btn-sm" onclick='editarPendencia({{ pendencia.id }}, {{ pendencia.nome_responsavel | tojson }}, {{ (pendencia.data_limite.strftime("%Y-%m-%d") if pendencia.data_limite else "") | tojson }}, {{ pendencia.titulo | tojson }}, {{ pendencia.descricao | tojson }})'>
+                        Editar
+                    </button>
+
+                    <!-- Formulário para Resolver -->
+                    <form action="{{ url_for('resolver_pendencia', id=pendencia.id) }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-outline-success btn-sm">Marcar como Resolvido</button>
+                    </form>
+
+                    <!-- Formulário para Apagar -->
+                    <form action="{{ url_for('deletar_pendencia', id=pendencia.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Tem a certeza que quer apagar esta pendência?');">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Apagar</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-success" role="alert">
+              <h4 class="alert-heading">Tudo em ordem!</h4>
+              <p>Você não tem nenhuma pendência no momento. Aproveite o dia!</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Função para preencher o formulário no modo de edição
+function editarPendencia(id, nome, data, titulo, descricao) {
+    document.getElementById('pendencia_id').value = id;
+    document.getElementById('nome_responsavel').value = nome;
+    document.getElementById('data_limite').value = data;
+    document.getElementById('titulo').value = titulo;
+    document.getElementById('descricao').value = descricao || '';
+    
+    document.getElementById('form-card-header').innerText = 'Editando Pendência';
+    document.getElementById('submit-button').innerText = 'Salvar Alterações';
+    document.getElementById('cancel-edit-button').classList.remove('d-none');
+    
+    // Rola a página para o topo para focar no formulário
+    window.scrollTo(0, 0);
+}
+
+// Função para cancelar a edição e limpar o formulário
+function cancelarEdicao() {
+    document.getElementById('pendencia-form').reset();
+    document.getElementById('pendencia_id').value = '';
+
+    document.getElementById('form-card-header').innerText = 'Adicionar Nova Pendência';
+    document.getElementById('submit-button').innerText = 'Adicionar';
+    document.getElementById('cancel-edit-button').classList.add('d-none');
+}
+</script>
+{% endblock %}

@@ -19,14 +19,14 @@
         {% endif %}
     {% endwith %}
 
-    <!-- Formulário para Criar ou Editar um Registo -->
+    <!-- Formulário para Criar ou Editar um Registro -->
     <div class="card mb-4">
         <div class="card-header">
-            <h4 id="form-title">Adicionar Novo Registo</h4>
+            <h4 id="form-title">Adicionar Novo Registro</h4>
         </div>
         <div class="card-body">
             <form id="ponto-form" method="POST" action="{{ url_for('registro_ponto') }}">
-                <!-- Input escondido para guardar o ID do registo a ser editado -->
+                <!-- Input escondido para guardar o ID do registro a ser editado -->
                 <input type="hidden" id="registro_id" name="registro_id">
                 
                 <div class="row">
@@ -64,7 +64,7 @@
                     <textarea class="form-control" id="observacao" name="observacao" rows="2"></textarea>
                 </div>
 
-                <button type="submit" class="btn btn-primary">Salvar Registo</button>
+                <button type="submit" class="btn btn-primary">Salvar Registro</button>
                 <button type="button" class="btn btn-secondary" id="clear-form-btn" style="display: none;">Cancelar Edição</button>
             </form>
         </div>
@@ -107,10 +107,10 @@
         </div>
     </div>
 
-    <!-- Tabela para Listar Registos Existentes -->
+    <!-- Tabela para Listar Registros Existentes -->
     <div class="card">
         <div class="card-header">
-            <h4>Meus Registos</h4>
+            <h4>Meus Registros</h4>
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -153,7 +153,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="8" class="text-center">Ainda não há registos.</td>
+                            <td colspan="8" class="text-center">Ainda não há registros.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.edit-btn').forEach(button => {
         button.addEventListener('click', function () {
             // Preenche o formulário com os dados do botão
-            formTitle.innerText = 'Editar Registo';
+            formTitle.innerText = 'Editar Registro';
             registroIdInput.value = this.dataset.id;
             dataInput.value = this.dataset.data;
             entradaInput.value = this.dataset.entrada;
@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Lógica para o botão "Cancelar Edição"
     clearBtn.addEventListener('click', function() {
-        formTitle.innerText = 'Adicionar Novo Registo';
+        formTitle.innerText = 'Adicionar Novo Registro';
         form.reset();
         registroIdInput.value = '';
         dataInput.value = '{{ hoje.strftime("%Y-%m-%d") }}'; // Valor padrão para data

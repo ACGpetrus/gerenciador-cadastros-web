@@ -37,7 +37,6 @@
                 <!-- Links principais à esquerda -->
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <!-- MUDANÇA: "Home Cadastros" para "Cadastros" -->
                         <a class="nav-link" href="{{ url_for('pagina_inicial') }}">Cadastros</a>
                     </li>
                     <li class="nav-item">
@@ -45,6 +44,10 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('contatos') }}">Agenda de Contatos</a>
+                    </li>
+                    <!-- INCLUSÃO DA NOVA FUNCIONALIDADE NO MENU -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('pendencias') }}">Pendências</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('ajuda') }}">Central de Ajuda</a>
